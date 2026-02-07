@@ -1,0 +1,11 @@
+alarms:
+  iats-demo-high-error-rate:
+    service: checkout-api
+    env: prod
+    log_groups:
+      - /aws/lambda/checkout-api-prod
+    repo_local_path: ${REPO_BASE_PATH}/checkout-api
+    owners:
+      - checkout-oncall@example.com
+    runbook_url: https://example.com/runbooks/checkout-api
+    dashboard_url: https://example.com/dashboards/checkout-api

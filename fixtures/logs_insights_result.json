@@ -1,0 +1,20 @@
+{
+  "query_id": "fixture-query-1",
+  "result": {
+    "status": "Complete",
+    "results": [
+      [
+        {"field": "@timestamp", "value": "2026-02-06T11:58:32Z"},
+        {"field": "@message", "value": "ERROR PaymentProviderTimeoutException: upstream timed out token=abc123verylongtokenvalue890"}
+      ],
+      [
+        {"field": "@timestamp", "value": "2026-02-06T11:58:41Z"},
+        {"field": "@message", "value": "ERROR PaymentProviderTimeoutException: upstream timed out"}
+      ],
+      [
+        {"field": "@timestamp", "value": "2026-02-06T11:59:05Z"},
+        {"field": "@message", "value": "Exception CheckoutServiceError: failed to create order for user"}
+      ]
+    ]
+  }
+}

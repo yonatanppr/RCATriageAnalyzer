@@ -1,0 +1,23 @@
+{
+  "version": "0",
+  "id": "4f89b6ce-6dd5-41a8-a06f-543f1cbe1111",
+  "detail-type": "CloudWatch Alarm State Change",
+  "source": "aws.cloudwatch",
+  "account": "123456789012",
+  "time": "2026-02-06T12:00:00Z",
+  "region": "us-east-1",
+  "resources": [
+    "arn:aws:cloudwatch:us-east-1:123456789012:alarm:iats-demo-high-error-rate"
+  ],
+  "detail": {
+    "alarmName": "iats-demo-high-error-rate",
+    "state": {
+      "value": "ALARM",
+      "reason": "Threshold Crossed: 1 datapoint [5.0] was greater than or equal to the threshold (1.0).",
+      "timestamp": "2026-02-06T11:59:00Z"
+    },
+    "previousState": {
+      "value": "OK"
+    }
+  }
+}

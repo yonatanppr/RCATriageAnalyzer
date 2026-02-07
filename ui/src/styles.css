@@ -1,0 +1,18 @@
+:root {
+  font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+  color: #14213d;
+  background: linear-gradient(180deg, #f7f8fb 0%, #edf2f4 100%);
+}
+* { box-sizing: border-box; }
+body { margin: 0; }
+.layout { display: grid; grid-template-columns: 320px 1fr; min-height: 100vh; }
+aside { border-right: 1px solid #cdd5df; padding: 16px; }
+main { padding: 24px; }
+button { width: 100%; text-align: left; margin-bottom: 8px; padding: 12px; border: 1px solid #ccd2db; background: #fff; border-radius: 8px; }
+button.active { border-color: #ff7a59; box-shadow: 0 0 0 2px #ffd7cc; }
+.card { border: 1px solid #dbe2ea; border-radius: 8px; background: #fff; margin-bottom: 10px; padding: 10px; }
+pre { white-space: pre-wrap; word-break: break-word; }
+@media (max-width: 900px) {
+  .layout { grid-template-columns: 1fr; }
+  aside { border-right: 0; border-bottom: 1px solid #cdd5df; }
+}
