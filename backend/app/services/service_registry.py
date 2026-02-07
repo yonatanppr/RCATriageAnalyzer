@@ -18,8 +18,10 @@ class ServiceRegistry:
         expanded = os.path.expandvars(text)
         self._registry = yaml.safe_load(expanded) or {}
 
-    def resolve(self, alarm_name: str) -> dict:
-        entry = self._registry.get("alarms", {}).get(alarm_name)
+    def resolve(self, key: str) -> dict:
+        entry = self._registry.get("alarms", {}).get(key)
+        if not entry:
+            entry = self._registry.get("services", {}).get(key)
         if entry:
             return entry
         return {

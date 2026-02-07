@@ -1,0 +1,12 @@
+default:
+  errors:
+    query: "fields @timestamp, @message | filter @message like /ERROR|Exception|Traceback/ | sort @timestamp desc | limit 200"
+  patterns:
+    query: "fields @message | stats count(*) as count by @message | sort count desc | limit 20"
+
+alarms:
+  iats-demo-high-error-rate:
+    errors:
+      query: "fields @timestamp, @message | filter @message like /ERROR|Timeout|Exception/ | sort @timestamp desc | limit 250"
+    patterns:
+      query: "fields @message | stats count(*) as count by @message | sort count desc | limit 30"

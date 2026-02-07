@@ -4,15 +4,21 @@ First working v1 prototype for local demo using Docker Compose.
 
 ## What this implements
 - CloudWatch Alarm ingestion (`POST /v1/alerts/cloudwatch`)
+- Alertmanager ingestion (`POST /v1/alerts/alertmanager`, MVP adapter)
 - Canonical `AlertEvent` normalization
 - Deduplicated `Incident` upsert + async worker triage (Celery/Redis)
-- Evidence collection via CloudWatch Logs Insights adapter (fixture mode by default)
+- Evidence collection via query-template library + CloudWatch Logs Insights adapter (fixture mode by default)
+- Correlation-aware evidence retrieval (correlation/request/trace ids when present)
+- Deployment/config change correlation timeline
 - Evidence Pack persistence
 - Pluggable LLM provider:
   - `local` (Ollama, default)
   - `openai` (remote API)
 - Triage report persistence and UI rendering
-- Console notification + optional Slack webhook
+- Human decision workflow (`awaiting_human_review` + approve/reject + lifecycle statuses)
+- Auth + RBAC guardrails for `/v1/*`
+- Audit logging, feedback loop, runtime metrics, and retention purge endpoint
+- Console notification + optional Slack + ticket sink stub
 
 ## Scope (v1)
 - Input source: CloudWatch alarm state change events only
@@ -42,6 +48,7 @@ This starts an `ollama` service and auto-pulls `LOCAL_LLM_MODEL` (default `qwen2
 2. Post sample CloudWatch event:
 ```bash
 curl -sS -X POST http://localhost:8000/v1/alerts/cloudwatch \
+  -H 'Authorization: Bearer dev-shared-token' \
   -H 'Content-Type: application/json' \
   --data @fixtures/cloudwatch_alarm_event.json
 ```
@@ -51,10 +58,16 @@ curl -sS -X POST http://localhost:8000/v1/alerts/cloudwatch \
 
 4. Inspect API directly:
 ```bash
-curl -sS http://localhost:8000/v1/incidents | jq
-curl -sS http://localhost:8000/v1/incidents/<INCIDENT_ID> | jq
-curl -sS http://localhost:8000/v1/incidents/<INCIDENT_ID>/evidence | jq
-curl -sS http://localhost:8000/v1/incidents/<INCIDENT_ID>/report | jq
+AUTH='Authorization: Bearer dev-shared-token'
+curl -sS http://localhost:8000/v1/incidents -H "$AUTH" | jq
+curl -sS http://localhost:8000/v1/incidents/<INCIDENT_ID> -H "$AUTH" | jq
+curl -sS http://localhost:8000/v1/incidents/<INCIDENT_ID>/evidence -H "$AUTH" | jq
+curl -sS http://localhost:8000/v1/incidents/<INCIDENT_ID>/report -H "$AUTH" | jq
+curl -sS -X POST http://localhost:8000/v1/incidents/<INCIDENT_ID>/decision -H "$AUTH" -H 'Content-Type: application/json' --data '{"decision":"approve"}' | jq
+curl -sS -X POST http://localhost:8000/v1/incidents/<INCIDENT_ID>/status -H "$AUTH" -H 'Content-Type: application/json' --data '{"status":"resolved"}' | jq
+curl -sS http://localhost:8000/v1/metrics/quality -H "$AUTH" | jq
+curl -sS http://localhost:8000/v1/metrics/runtime -H "$AUTH" | jq
+curl -sS -X POST http://localhost:8000/v1/changes/deployments -H "$AUTH" -H 'Content-Type: application/json' --data '{"service":"checkout-api","env":"prod","deployed_at":"2026-02-07T18:00:00Z","version":"1.2.3","git_sha":"abc123"}' | jq
 ```
 
 ## LLM provider configuration
@@ -83,7 +96,8 @@ OPENAI_MODEL=gpt-5.3-codex
 - If provider is correctly configured:
   - Worker requests strict JSON report.
   - Response is validated against `TriageReportPayload` schema.
-  - Incident transitions to `triaged`.
+  - Incident transitions to `awaiting_human_review`.
+  - Reviewer approves via decision endpoint before final `triaged`.
 
 ## Environment
 Important variables:
@@ -95,8 +109,18 @@ Important variables:
 - `AWS_REGION`
 - `FIXTURE_MODE=true` (default)
 - `SLACK_WEBHOOK_URL` (optional)
+- `AUTH_ENABLED`, `AUTH_SHARED_TOKEN`
+- `TICKET_SINK_ENABLED`
 - `REPO_BASE_PATH`
 - `ALLOW_RAW_STORAGE=false` (default)
+- `REPO_RECENT_COMMITS_LIMIT=5`
+- `CELERY_TASK_MAX_RETRIES=3`
+- `CELERY_RETRY_BACKOFF_SECONDS=5`
+- `CELERY_RETRY_JITTER=true`
+- `DATA_RETENTION_DAYS`
+- `NO_GUESS_CONFIDENCE_THRESHOLD`
+- `EVIDENCE_MIN_REFS_FOR_CONFIDENT_REPORT`
+- `MAX_LOGS_QUERIES_PER_INCIDENT`
 
 ## Run backend tests locally
 ```bash

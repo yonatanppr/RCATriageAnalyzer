@@ -9,6 +9,8 @@ os.environ.setdefault("FIXTURE_MODE", "true")
 os.environ.setdefault("CELERY_TASK_ALWAYS_EAGER", "true")
 os.environ.setdefault("REPO_BASE_PATH", str(Path(__file__).resolve().parents[2] / "repos"))
 os.environ.setdefault("LLM_PROVIDER", "local")
+os.environ.setdefault("AUTH_ENABLED", "true")
+os.environ.setdefault("AUTH_SHARED_TOKEN", "test-token")
 
 from app.config import get_settings  # noqa: E402
 from app.storage.database import Base, engine  # noqa: E402

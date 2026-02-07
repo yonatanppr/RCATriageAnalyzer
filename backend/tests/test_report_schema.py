@@ -3,52 +3,72 @@ import pytest
 from app.domain.models import TriageReportPayload
 
 
+def _ref(artifact_id: str, pointer: str) -> dict:
+    return {"artifact_id": artifact_id, "pointer": pointer}
+
+
 def test_report_schema_valid_example() -> None:
     payload = {
-        "summary": "Checkout failing due to payment timeout",
-        "symptoms": [
+        "summary": "Checkout errors correlate with a recent deploy.",
+        "mode": "normal",
+        "facts": [
             {
-                "text": "Timeout exceptions observed",
-                "citations": [{"kind": "logs_pattern", "ref_id": "abc123"}],
+                "claim_id": "fact-1",
+                "text": "Error signature TimeoutException spiked after alert.",
+                "evidence_refs": [_ref("art-logs", "log_line_range:1-10")],
             }
         ],
         "hypotheses": [
             {
                 "rank": 1,
-                "title": "Payment provider latency",
-                "explanation": "The upstream call timed out repeatedly",
-                "confidence": 0.81,
-                "citations": [{"kind": "logs_query", "ref_id": "q1"}],
+                "title": "Upstream timeout behavior changed in latest deploy.",
+                "explanation": "Repeated timeout signatures overlap deployment window.",
+                "confidence": 0.74,
+                "evidence_refs": [_ref("art-deploy", "query_id:deploy-timeline")],
+                "disconfirming_signals": ["No timeout logs in expanded window"],
+                "missing_data": ["Dependency latency metrics"],
             }
         ],
-        "verification_steps": [
+        "next_checks": [
             {
-                "step": "Run logs query for provider errors",
+                "check_id": "check-1",
+                "step": "Re-run query with +15 minute window.",
                 "command_or_query": "fields @message",
-                "citations": [{"kind": "logs_query", "ref_id": "q1"}],
+                "evidence_refs": [_ref("art-query", "query_id:q-errors")],
             }
         ],
         "mitigations": [
             {
-                "action": "Enable fallback gateway",
-                "risk": "Potential partial degradation",
-                "citations": [{"kind": "repo_snippet", "ref_id": "s1"}],
+                "mitigation_id": "mit-1",
+                "action": "Rollback deployment to previous SHA.",
+                "risk": "Potential feature regression.",
+                "evidence_refs": [_ref("art-deploy", "query_id:deploy-timeline")],
             }
         ],
-        "notes": None,
+        "claims": [
+            {
+                "claim_id": "claim-1",
+                "type": "fact",
+                "text": "Timeouts increased.",
+                "evidence_refs": [_ref("art-logs", "log_line_range:1-10")],
+            }
+        ],
+        "uncertainty_note": None,
     }
     model = TriageReportPayload.model_validate(payload)
     assert model.summary.startswith("Checkout")
 
 
-def test_report_schema_rejects_missing_hypothesis_citations() -> None:
+def test_report_schema_rejects_fact_without_citation() -> None:
     payload = {
         "summary": "x",
-        "symptoms": [],
-        "hypotheses": [{"rank": 1, "title": "x", "explanation": "x", "confidence": 0.5, "citations": []}],
-        "verification_steps": [],
+        "mode": "normal",
+        "facts": [{"claim_id": "f1", "text": "x", "evidence_refs": []}],
+        "hypotheses": [],
+        "next_checks": [],
         "mitigations": [],
-        "notes": None,
+        "claims": [],
+        "uncertainty_note": None,
     }
     with pytest.raises(Exception):
         TriageReportPayload.model_validate(payload)

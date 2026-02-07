@@ -30,6 +30,20 @@ class Settings(BaseSettings):
     triage_window_minutes: int = 10
     max_repo_snippets: int = 5
     celery_task_always_eager: bool = False
+    celery_task_max_retries: int = 3
+    celery_retry_backoff_seconds: int = 5
+    celery_retry_jitter: bool = True
+    repo_recent_commits_limit: int = 5
+    auth_enabled: bool = True
+    auth_shared_token: str | None = "dev-shared-token"
+    ticket_sink_enabled: bool = False
+    data_retention_days: int = 30
+    evidence_min_refs_for_confident_report: int = 3
+    no_guess_confidence_threshold: float = 0.45
+    max_logs_queries_per_incident: int = 5
+    max_artifact_chars: int = 12000
+    query_library_path: str = "app/config/query_library.yaml"
+    deploy_correlation_window_minutes: int = 90
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 

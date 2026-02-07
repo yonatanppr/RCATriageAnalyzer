@@ -34,9 +34,11 @@ class OpenAILLMClient:
 
     def generate_triage_report(self, evidence_digest: dict[str, Any], schema: dict[str, Any]) -> dict[str, Any]:
         prompt = (
-            "You are producing an incident triage report. "
-            "Use only evidence provided. Every symptom, hypothesis, verification step, and mitigation must include citations. "
-            "Do not invent evidence. Return JSON only."
+            "You are producing an incident triage report with strict evidence-citation rules. "
+            "Do not invent any fact. Every fact must include evidence_refs with artifact_id and pointer. "
+            "Separate facts from hypotheses. Include claims[] that map all key statements to evidence_refs. "
+            "If evidence is weak, set mode=insufficient_evidence and only propose next_checks with citations. "
+            "Return JSON only and strictly follow the provided schema."
         )
         response = self.client.responses.create(
             model=self.settings.openai_model,
@@ -70,9 +72,11 @@ class OllamaLLMClient:
 
     def generate_triage_report(self, evidence_digest: dict[str, Any], schema: dict[str, Any]) -> dict[str, Any]:
         prompt = (
-            "You are producing an incident triage report. "
-            "Use only evidence provided. Every symptom, hypothesis, verification step, and mitigation must include citations. "
-            "Do not invent evidence. Return JSON only, matching the provided JSON schema."
+            "You are producing an incident triage report with strict evidence-citation rules. "
+            "Do not invent any fact. Every fact must include evidence_refs with artifact_id and pointer. "
+            "Separate facts from hypotheses. Include claims[] that map all key statements to evidence_refs. "
+            "If evidence is weak, set mode=insufficient_evidence and only propose next_checks with citations. "
+            "Return JSON only, matching the provided JSON schema."
         )
         payload = {
             "model": self.settings.local_llm_model,

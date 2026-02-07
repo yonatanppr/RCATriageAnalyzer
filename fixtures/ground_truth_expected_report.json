@@ -1,0 +1,76 @@
+{
+  "summary": "Example summary",
+  "mode": "normal",
+  "facts": [
+    {
+      "claim_id": "fact-1",
+      "text": "Observed error signature.",
+      "evidence_refs": [
+        {
+          "artifact_id": "art-1",
+          "pointer": "log_line_range:1-5"
+        }
+      ]
+    }
+  ],
+  "hypotheses": [
+    {
+      "rank": 1,
+      "title": "Likely hypothesis",
+      "explanation": "Based on evidence",
+      "confidence": 0.6,
+      "evidence_refs": [
+        {
+          "artifact_id": "art-2",
+          "pointer": "query_id:q-errors"
+        }
+      ],
+      "disconfirming_signals": [
+        "No errors after rollback"
+      ],
+      "missing_data": [
+        "Dependency latency metrics"
+      ]
+    }
+  ],
+  "next_checks": [
+    {
+      "check_id": "check-1",
+      "step": "Run expanded query",
+      "command_or_query": "fields @message",
+      "evidence_refs": [
+        {
+          "artifact_id": "art-2",
+          "pointer": "query_id:q-errors"
+        }
+      ]
+    }
+  ],
+  "mitigations": [
+    {
+      "mitigation_id": "mit-1",
+      "action": "Rollback",
+      "risk": "Feature regression",
+      "evidence_refs": [
+        {
+          "artifact_id": "art-3",
+          "pointer": "file_path:service.py#120-140"
+        }
+      ]
+    }
+  ],
+  "claims": [
+    {
+      "claim_id": "claim-1",
+      "type": "fact",
+      "text": "Observed error signature.",
+      "evidence_refs": [
+        {
+          "artifact_id": "art-1",
+          "pointer": "log_line_range:1-5"
+        }
+      ]
+    }
+  ],
+  "uncertainty_note": null
+}

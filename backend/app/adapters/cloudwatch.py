@@ -1,6 +1,7 @@
 """CloudWatch adapters."""
 
 import json
+import re
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -43,6 +44,7 @@ class CloudWatchAlertAdapter(AlertSourceAdapter):
             "previous_state": prev_state_obj.get("value", ""),
         }
         reason = state_obj.get("reason", "")
+        correlation_id = self._extract_correlation_id(payload, detail, reason)
         severity = "critical" if state_value == "ALARM" else "info"
         return AlertEvent(
             source="cloudwatch",
@@ -50,6 +52,7 @@ class CloudWatchAlertAdapter(AlertSourceAdapter):
             title=f"CloudWatch Alarm: {alarm_name}",
             severity=severity,
             state=state_value,
+            correlation_id=correlation_id,
             fired_at=fired_at,
             ended_at=ended_at,
             labels=labels,
@@ -58,9 +61,30 @@ class CloudWatchAlertAdapter(AlertSourceAdapter):
                 "alarm_name": alarm_name,
                 "region": payload.get("region", ""),
                 "account_id": payload.get("account", ""),
+                "correlation_id": correlation_id or "",
             },
             raw_payload=payload,
         )
+
+    def _extract_correlation_id(self, payload: dict[str, Any], detail: dict[str, Any], reason: str) -> str | None:
+        candidates = [
+            detail.get("correlationId"),
+            detail.get("correlation_id"),
+            detail.get("requestId"),
+            detail.get("request_id"),
+            detail.get("traceId"),
+            detail.get("trace_id"),
+            payload.get("correlationId"),
+            payload.get("correlation_id"),
+        ]
+        for value in candidates:
+            if isinstance(value, str) and value.strip():
+                return value.strip()
+
+        match = re.search(r"(?i)(correlation[_\s-]?id|request[_\s-]?id|trace[_\s-]?id)\s*[:=]\s*([A-Za-z0-9_.:/-]{6,})", reason)
+        if match:
+            return match.group(2)
+        return None
 
 
 class CloudWatchLogsAdapter(EvidenceSourceAdapter):
