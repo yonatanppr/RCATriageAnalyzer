@@ -115,6 +115,7 @@ class TriageReportPayload(BaseModel):
     mitigations: list[MitigationAction]
     claims: list[ReportClaim]
     uncertainty_note: str | None = None
+    generation_metadata: dict[str, Any] = Field(default_factory=dict)
 
     @field_validator("facts")
     @classmethod

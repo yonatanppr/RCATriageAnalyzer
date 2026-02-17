@@ -18,7 +18,10 @@ class Settings(BaseSettings):
     openai_api_key: str | None = None
     openai_model: str = "gpt-5.3-codex"
     local_llm_model: str = "qwen2.5:7b-instruct"
-    ollama_base_url: str = "http://ollama:11434"
+    ollama_base_url: str | None = None
+    ollama_endpoints: str = "http://host.docker.internal:11434,http://ollama:11434"
+    ollama_healthcheck_timeout_seconds: int = 3
+    ollama_endpoint_cache_ttl_seconds: int = 300
     local_llm_timeout_seconds: int = 300
 
     aws_region: str = "us-east-1"

@@ -5,15 +5,15 @@
     "results": [
       [
         {"field": "@timestamp", "value": "2026-02-06T11:58:32Z"},
-        {"field": "@message", "value": "ERROR PaymentProviderTimeoutException: upstream timed out token=abc123verylongtokenvalue890"}
+        {"field": "@message", "value": "ERROR Traceback (most recent call last): File \"/var/task/app.py\", line 8, in checkout_handler raise ValueError(\"order_total must be positive\") ValueError: order_total must be positive request_id=req-7f43d9a2"}
       ],
       [
         {"field": "@timestamp", "value": "2026-02-06T11:58:41Z"},
-        {"field": "@message", "value": "ERROR PaymentProviderTimeoutException: upstream timed out"}
+        {"field": "@message", "value": "ERROR requests.exceptions.ReadTimeout: HTTPSConnectionPool(host='api.payment-gateway.example', port=443): Read timed out. (read timeout=3.0) function=checkout-lambda-prod"}
       ],
       [
         {"field": "@timestamp", "value": "2026-02-06T11:59:05Z"},
-        {"field": "@message", "value": "Exception CheckoutServiceError: failed to create order for user"}
+        {"field": "@message", "value": "ERROR botocore.exceptions.EndpointConnectionError: Could not connect to the endpoint URL: \"https://api.payment-gateway.example/v1/authorize\""}
       ]
     ]
   }

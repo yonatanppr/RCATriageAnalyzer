@@ -305,11 +305,27 @@ class IncidentRepository:
         failures = sum(1 for row in run_rows if row.status == "failed")
         llm_failures = sum(1 for row in run_rows if row.stage == "llm" and row.status == "failed")
         durations = [row.duration_ms for row in run_rows if row.duration_ms > 0]
+        recent_rows = (
+            self.db.execute(select(PipelineRunORM).order_by(desc(PipelineRunORM.created_at)).limit(20)).scalars().all()
+        )
         return {
             "pipeline_runs": len(run_rows),
             "pipeline_failures": failures,
             "llm_failures": llm_failures,
             "avg_pipeline_duration_ms": int(sum(durations) / len(durations)) if durations else 0,
+            "recent_runs": [
+                {
+                    "id": str(row.id),
+                    "incident_id": str(row.incident_id) if row.incident_id else None,
+                    "stage": row.stage,
+                    "status": row.status,
+                    "duration_ms": row.duration_ms,
+                    "error": row.error,
+                    "metrics": row.metrics,
+                    "created_at": row.created_at,
+                }
+                for row in recent_rows
+            ],
         }
 
     def purge_old_data(self, before: datetime) -> dict[str, int]:

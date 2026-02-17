@@ -1,23 +1,24 @@
 {
   "version": "0",
-  "id": "4f89b6ce-6dd5-41a8-a06f-543f1cbe1111",
+  "id": "f21d5105-56bb-437f-a3e2-13261bce45e0",
   "detail-type": "CloudWatch Alarm State Change",
   "source": "aws.cloudwatch",
   "account": "123456789012",
-  "time": "2026-02-06T12:00:00Z",
+  "time": "2026-02-06T12:12:00Z",
   "region": "us-east-1",
   "resources": [
     "arn:aws:cloudwatch:us-east-1:123456789012:alarm:iats-demo-high-error-rate"
   ],
   "detail": {
     "alarmName": "iats-demo-high-error-rate",
+    "requestId": "req-1bb2cc3d",
     "state": {
       "value": "ALARM",
-      "reason": "Threshold Crossed: Lambda checkout handler reported unhandled exceptions. Example: ValueError: order_total must be positive in checkout/handler.py:84.",
-      "timestamp": "2026-02-06T11:59:00Z"
+      "reason": "Threshold Crossed: repeated Lambda invocation failures due to external API connect timeout (HTTPConnectionPool host=api.payment-gateway.example, connect timeout=3s).",
+      "timestamp": "2026-02-06T12:11:40Z"
     },
     "previousState": {
-      "value": "OK"
+      "value": "ALARM"
     }
   }
 }

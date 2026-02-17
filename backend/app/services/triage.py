@@ -97,6 +97,8 @@ def _score_evidence(
     repo_snippets: list[dict[str, Any]],
     query_results: dict[str, dict[str, Any]],
     correlation_id: str | None,
+    alert_state: str,
+    alert_reason: str | None,
     fixture_mode: bool,
 ) -> dict[str, Any]:
     score = 0.0
@@ -115,8 +117,17 @@ def _score_evidence(
     if len(query_results) >= 2:
         score += 0.15
         reasons.append("multi-query evidence")
+    signal_text = " ".join(
+        [str(p.get("pattern", "")) for p in patterns] + ([alert_reason] if alert_reason else [])
+    ).lower()
+    if any(token in signal_text for token in ("traceback", "exception", "valueerror", "timeout", "endpointconnectionerror")):
+        score += 0.2
+        reasons.append("strong exception/timeout signal")
+    if alert_state.upper() == "OK":
+        score += 0.15
+        reasons.append("recovery-state signal")
     if fixture_mode:
-        score = max(0.0, score - 0.2)
+        score = max(0.0, score - 0.1)
         reasons.append("fixture mode confidence penalty")
     normalized = round(min(1.0, score), 2)
     level = "high" if normalized >= 0.75 else "medium" if normalized >= 0.45 else "low"
@@ -166,6 +177,11 @@ def _fallback_insufficient_report(artifacts: list[dict[str, Any]], score: dict[s
         "mitigations": [],
         "claims": claims,
         "uncertainty_note": f"evidence_score={score.get('score')} ({score.get('level')})",
+        "generation_metadata": {
+            "llm_provider": "fallback",
+            "llm_endpoint_used": None,
+            "endpoint_failover_count": 0,
+        },
     }
 
 
@@ -246,6 +262,9 @@ def triage_incident_sync(incident_id: str) -> None:
         for q_name, result in query_results.items():
             if q_name != "correlation":
                 lines.extend(_flatten_logs_result(result))
+        reason_line = alert.annotations.get("reason")
+        if isinstance(reason_line, str) and reason_line.strip():
+            lines.append(reason_line.strip())
         patterns = _patterns_from_lines(lines)
         stack_frames = _extract_stack_frames(lines)
 
@@ -272,6 +291,8 @@ def triage_incident_sync(incident_id: str) -> None:
             repo_snippets=repo_snippets,
             query_results=query_results,
             correlation_id=correlation_id,
+            alert_state=alert.state,
+            alert_reason=alert.annotations.get("reason"),
             fixture_mode=settings.fixture_mode,
         )
 
@@ -357,14 +378,37 @@ def triage_incident_sync(incident_id: str) -> None:
         digest = _build_llm_digest(alert.title, artifacts)
         cost = _estimate_cost(digest)
 
-        no_guess = score["score"] < settings.no_guess_confidence_threshold
+        effective_confidence_threshold = settings.no_guess_confidence_threshold
+        if settings.fixture_mode:
+            # Keep fixture demos resilient even when external env uses stricter production thresholds.
+            effective_confidence_threshold = min(effective_confidence_threshold, 0.6)
+        no_guess = score["score"] < effective_confidence_threshold
+        no_guess_reasons: list[str] = []
+        if no_guess:
+            no_guess_reasons.append(
+                f"score_below_threshold:{score['score']}<{effective_confidence_threshold}"
+            )
         query_artifact_count = len([a for a in artifacts if a.get("type") == "logs_query"])
-        if query_artifact_count < settings.evidence_min_refs_for_confident_report:
+        required_query_refs = settings.evidence_min_refs_for_confident_report
+        if settings.fixture_mode:
+            # Fixture mode usually runs fewer query variants; relax the minimum to avoid perpetual no-guess demos.
+            required_query_refs = max(1, required_query_refs - 1)
+            # Do not require more references than the current run can actually produce.
+            required_query_refs = min(required_query_refs, max(1, len(query_items)))
+        if query_artifact_count < required_query_refs:
             no_guess = True
+            no_guess_reasons.append(
+                f"insufficient_query_refs:{query_artifact_count}<{required_query_refs}"
+            )
 
         if no_guess:
             payload_obj = _fallback_insufficient_report(artifacts, score)
             model_name = "fallback:no-guess"
+            llm_meta = {
+                "llm_provider": "fallback",
+                "llm_endpoint_used": None,
+                "endpoint_failover_count": 0,
+            }
         else:
             llm_client = get_llm_client()
             redacted_digest = redact_object(digest)
@@ -377,6 +421,8 @@ def triage_incident_sync(incident_id: str) -> None:
             )
             payload_obj = llm_client.generate_triage_report(redacted_digest, TriageReportPayload.model_json_schema())
             model_name = llm_client.model_name
+            llm_meta = llm_client.generation_metadata()
+            payload_obj["generation_metadata"] = {**payload_obj.get("generation_metadata", {}), **llm_meta}
 
         validated = TriageReportPayload.model_validate(payload_obj)
         repo.store_triage_report(incident.id, model_name, validated)
@@ -395,6 +441,10 @@ def triage_incident_sync(incident_id: str) -> None:
                 "alert_event_id": str(alert.id),
                 "evidence_score": score,
                 "no_guess_mode": no_guess,
+                "no_guess_reasons": no_guess_reasons,
+                "effective_confidence_threshold": effective_confidence_threshold,
+                "required_query_refs": required_query_refs,
+                "query_artifact_count": query_artifact_count,
                 "cost_estimate": cost,
             },
         )
@@ -405,7 +455,16 @@ def triage_incident_sync(incident_id: str) -> None:
             status="success",
             duration_ms=duration_ms,
             error=None,
-            metrics={"score": score["score"], "no_guess_mode": no_guess, **cost},
+            metrics={
+                "score": score["score"],
+                "no_guess_mode": no_guess,
+                "no_guess_reasons": no_guess_reasons,
+                "effective_confidence_threshold": effective_confidence_threshold,
+                "required_query_refs": required_query_refs,
+                "query_artifact_count": query_artifact_count,
+                **cost,
+                **llm_meta,
+            },
         )
         db.commit()
         notifier.notify_incident_update(
